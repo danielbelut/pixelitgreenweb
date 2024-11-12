@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixelit Game</title>
+    <style>
+        body, html {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+        }
+        canvas {
+            display: block;
+            background-color: #222;
+        }
+    </style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+    let playerX, playerSize = 100, chainLength = 0;
+    let squares = [];
+    let gameOver = false;
+    let startTime = Date.now();
+    let finalSeconds = 0;
+    let squareSpeed = 2;
+    let spawnInterval = 2000;
+
+    // Resize canvas to full screen
+    function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+        playerX = (width - playerSize) / 2;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Handle game tick
+    function gameTick() {
+        if (!gameOver) {
+            update();
+            draw();
+            requestAnimationFrame(gameTick);
+        } else {
+            drawGameOver();
+        }
+    }
+
+    // Update game state
+    function update() {
+        const elapsedTime = (Date.now() - startTime) / 1000;
+
+        // Increase speed and decrease spawn interval over time
+        if (elapsedTime > 5 && spawnInterval > 500) {
+            squareSpeed += 0.05;
+            spawnInterval = Math.max(500, spawnInterval - 50);
+        }
+
+        // Move player if key is pressed
+        window.addEventListener('mousemove', (event) => {
+            playerX = event.clientX - playerSize / 2;
+        });
+
+        // Move and draw squares
+        squares = squares.filter(square => {
+            square.y -= squareSpeed;
+            if (square.y < 0) return false;
+            if (checkCollision(square)) {
+                chainLength += playerSize;
+                return false;
+            }
+            return true;
+        });
+
+        // Spawn new square
+        if (elapsedTime * 1000 % spawnInterval < 30) spawnSquare();
+
+        // Check game over
+        if (50 + playerSize + chainLength >= height) {
+            gameOver = true;
+            finalSeconds = Math.floor(elapsedTime);
+        }
+    }
+
+    // Draw game elements
+    function draw() {
+        ctx.clearRect(0, 0, width, height);
+
+        // Draw player
+        ctx.fillStyle = '#90EE90';
+        ctx.fillRect(playerX, 50, playerSize, playerSize + chainLength);
+
+        // Draw chronometer
+        ctx.fillStyle = '#008000';
+        ctx.font = '50px Arial';
+        ctx.textAlign = 'center';
+        const seconds = Math.floor((Date.now() - startTime) / 1000);
+        ctx.fillText(seconds, playerX + playerSize / 2, 100);
+
+        // Draw squares
+        ctx.fillStyle = 'green';
+        squares.forEach(square => ctx.fillRect(square.x, square.y, playerSize, playerSize));
+    }
+
+    // Draw game over screen
+    function drawGameOver() {
+        ctx.fillStyle = '#90EE90';
+        ctx.fillRect((width - 300) / 2, (height - 150) / 2, 300, 150);
+
+        ctx.fillStyle = '#006400';
+        ctx.font = '80px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(finalSeconds, width / 2, height / 2 + 20);
+    }
+
+    // Spawn new square
+    function spawnSquare() {
+        const x = Math.random() * (width - playerSize);
+        squares.push({x, y: height});
+    }
+
+    // Check collision
+    function checkCollision(square) {
+        return square.y < 50 + playerSize + chainLength &&
+               square.x < playerX + playerSize &&
+               square.x + playerSize > playerX;
+    }
+
+    // Start the game
+    gameTick();
+
+</script>
+</body>
+</html>
